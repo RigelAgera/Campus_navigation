@@ -1,22 +1,39 @@
-# 忽略所有 .exe 文件
-*.exe
+# ============ 构建产物 ============
+build/
+cmake-build-*/
 
-# 忽略 PDF 文件
+# 编译目标文件
+*.o
+*.obj
+
+# ============ 可执行文件 ============
+*.exe
+*.out
+*.app
+
+# ============ IDE / 编辑器 ============
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ============ 文档 ============
 *.pdf
 
-# 忽略 Office 三件套文件
-# Word
+# Office 三件套
 *.doc
 *.docx
-
-# Excel
 *.xls
 *.xlsx
 *.xlsm
-
-# PowerPoint
 *.ppt
 *.pptx
 *.pptm
 
+# ============ 其他 ============
 *.json
+Thumbs.db
+.DS_Store
+*.bin
