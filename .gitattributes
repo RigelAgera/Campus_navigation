@@ -1,5 +1,23 @@
-# 所有 .md 文件保持 LF，不做 CRLF 转换
+# Auto detect text files and normalize to LF in repo
+* text=auto
+
+# Markdown files - always use LF in working tree (cross-platform)
 *.md text eol=lf
 
-# 或按路径匹配
-.continue/prompts/*.md text eol=lf
+# C/C++ source files - LF in repo, OS-native on checkout
+*.cpp text
+*.h text
+*.hpp text
+
+# CMake files
+CMakeLists.txt text
+*.cmake text
+
+# CSV data files
+*.csv text
+
+# Binary files - do not touch line ending conversion
+*.png binary
+*.jpg binary
+*.o binary
+*.exe binary
