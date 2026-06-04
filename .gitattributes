@@ -1,0 +1,5 @@
+# 所有 .md 文件保持 LF，不做 CRLF 转换
+*.md text eol=lf
+
+# 或按路径匹配
+.continue/prompts/*.md text eol=lf

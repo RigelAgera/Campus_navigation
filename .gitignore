@@ -1,0 +1,22 @@
+# 忽略所有 .exe 文件
+*.exe
+
+# 忽略 PDF 文件
+*.pdf
+
+# 忽略 Office 三件套文件
+# Word
+*.doc
+*.docx
+
+# Excel
+*.xls
+*.xlsx
+*.xlsm
+
+# PowerPoint
+*.ppt
+*.pptx
+*.pptm
+
+*.json
