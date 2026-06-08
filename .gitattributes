@@ -4,10 +4,10 @@
 # Markdown files - always use LF in working tree (cross-platform)
 *.md text eol=lf
 
-# C/C++ source files - LF in repo, OS-native on checkout
-*.cpp text
-*.h text
-*.hpp text
+# C/C++ source files - always LF (cross-platform consistency)
+*.cpp text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
 
 # CMake files
 CMakeLists.txt text
