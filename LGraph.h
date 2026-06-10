@@ -24,6 +24,7 @@ public:
                     const RoadInfo& new_info);
     void setRoadStatus(const std::string& from_id, const std::string& to_id,
                        const std::string& status);  // "open" / "closed"
+    bool hasRoad(const std::string& from_id, const std::string& to_id) const;
 
     // ==================== 查询 ====================
     PlaceInfo getPlace(const std::string& place_id) const;
@@ -45,10 +46,12 @@ public:
     size_t getPlaceCount() const;
     size_t getRoadCount() const;   // 返回去重后的道路数（open + closed）
 
+    void clear();   // 清空所有顶点和边，供 LOAD 使用
+
 private:
     // 邻接表中的一条边记录
     struct Edge {
-        std::string to_id;
+        std::string to_id;  // store as directed graph
         int distance;
         int walk_time;
         std::string status;   // "open" 或 "closed"

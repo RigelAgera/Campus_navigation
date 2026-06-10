@@ -1,9 +1,10 @@
 // LGraph.cpp - 图 ADT 的实现
 
 #include "LGraph.h"
+#include "GraphException.h"
 #include <algorithm>   // std::remove_if, std::minmax
-#include <stdexcept>
 #include <set>
+#include <stdexcept>
 #include <utility>     // std::pair
 
 // ==================== 顶点操作 ====================
@@ -18,7 +19,7 @@ void LGraph::addPlace(const PlaceInfo& place) {
 void LGraph::removePlace(const std::string& place_id) {
     auto placeIt = places_.find(place_id);
     if (placeIt == places_.end()) {
-        throw std::runtime_error("地点不存在: " + place_id);
+        throw PlaceNotFoundException(place_id);
     }
 
     // 从所有邻居的邻接表中移除指向本顶点的边
@@ -39,7 +40,7 @@ void LGraph::removePlace(const std::string& place_id) {
 void LGraph::modifyPlace(const std::string& place_id, const PlaceInfo& new_info) {
     auto it = places_.find(place_id);
     if (it == places_.end()) {
-        throw std::runtime_error("地点不存在: " + place_id);
+        throw PlaceNotFoundException(place_id);
     }
     // 注意：place_id 本身不能改（它是键）
     // 但如果 new_info 里的 place_id 不同，可以选择忽略或抛异常
@@ -56,9 +57,15 @@ bool LGraph::hasPlace(const std::string& place_id) const {
 
 void LGraph::addRoad(const RoadInfo& road) {
     // 检查两个顶点是否存在
-    if (!hasPlace(road.from_id) || !hasPlace(road.to_id)) {
-        throw std::runtime_error("添加道路时地点不存在: " 
-                                 + road.from_id + " -> " + road.to_id);
+    if (!hasPlace(road.from_id)) {
+        throw PlaceNotFoundException(road.from_id);
+    }
+    if (!hasPlace(road.to_id)) {
+        throw PlaceNotFoundException(road.to_id);
+    }
+
+    if (hasRoad(road.from_id, road.to_id)) {
+        throw DuplicateRoadException(road.from_id, road.to_id);
     }
 
     // 无向图：双向插入
@@ -69,6 +76,10 @@ void LGraph::addRoad(const RoadInfo& road) {
 }
 
 void LGraph::removeRoad(const std::string& from_id, const std::string& to_id) {
+    if (!hasRoad(from_id, to_id)) {
+        throw RoadNotFoundException(from_id, to_id);
+    }
+
     auto removeDirection = [&](const std::string& a, const std::string& b) {
         auto it = adjList_.find(a);
         if (it == adjList_.end()) return;
@@ -86,6 +97,10 @@ void LGraph::removeRoad(const std::string& from_id, const std::string& to_id) {
 
 void LGraph::modifyRoad(const std::string& from_id, const std::string& to_id,
                         const RoadInfo& new_info) {
+    if (!hasRoad(from_id, to_id)) {
+        throw RoadNotFoundException(from_id, to_id);
+    }
+
     auto modifyDirection = [&](const std::string& a, const std::string& b) {
         auto it = adjList_.find(a);
         if (it == adjList_.end()) return;
@@ -103,10 +118,23 @@ void LGraph::modifyRoad(const std::string& from_id, const std::string& to_id,
     modifyDirection(to_id, from_id);
 }
 
+bool LGraph::hasRoad(const std::string& from_id, const std::string& to_id) const {
+    auto it = adjList_.find(from_id);
+    if (it == adjList_.end()) return false;
+    for (const auto& e : it->second) {
+        if (e.to_id == to_id) return true;
+    }
+    return false;
+}
+
 void LGraph::setRoadStatus(const std::string& from_id, const std::string& to_id,
                            const std::string& status) {
     if (status != "open" && status != "closed") {
-        throw std::runtime_error("无效的道路状态: " + status);
+        throw InvalidRoadStatusException(status);
+    }
+
+    if (!hasRoad(from_id, to_id)) {
+        throw RoadNotFoundException(from_id, to_id);
     }
 
     auto setDir = [&](const std::string& a, const std::string& b) {
@@ -129,7 +157,7 @@ void LGraph::setRoadStatus(const std::string& from_id, const std::string& to_id,
 PlaceInfo LGraph::getPlace(const std::string& place_id) const {
     auto it = places_.find(place_id);
     if (it == places_.end()) {
-        throw std::runtime_error("地点不存在: " + place_id);
+        throw PlaceNotFoundException(place_id);
     }
     return it->second;
 }
@@ -171,6 +199,10 @@ std::vector<PlaceInfo> LGraph::getAllPlaces() const {
     for (const auto& [id, info] : places_) {
         result.push_back(info);
     }
+    std::sort(result.begin(), result.end(),
+              [](const PlaceInfo& a, const PlaceInfo& b) {
+                  return a.place_id < b.place_id;
+              });
     return result;
 }
 
@@ -193,6 +225,12 @@ std::vector<RoadInfo> LGraph::getAllRoads() const {
             }
         }
     }
+
+    std::sort(result.begin(), result.end(),
+              [](const RoadInfo& a, const RoadInfo& b) {
+                  if (a.from_id != b.from_id) return a.from_id < b.from_id;
+                  return a.to_id < b.to_id;
+              });
     return result;
 }
 
@@ -233,6 +271,13 @@ std::vector<RoadInfo> LGraph::getAllOpenRoads() const {
             }
         }
     }
+
+    std::sort(result.begin(), result.end(),
+              [](const RoadInfo& a, const RoadInfo& b) {
+                  if (a.distance != b.distance) return a.distance < b.distance;
+                  if (a.from_id != b.from_id) return a.from_id < b.from_id;
+                  return a.to_id < b.to_id;
+              });
     return result;
 }
 
@@ -249,4 +294,9 @@ size_t LGraph::getRoadCount() const {
         }
     }
     return visited.size();
+}
+
+void LGraph::clear() {
+    places_.clear();
+    adjList_.clear();
 }

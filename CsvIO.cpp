@@ -5,9 +5,9 @@
 // 兼容带表头和不带表头两种形式，对空行做容错
 
 #include "CsvIO.h"
+#include "GraphException.h"
 #include <fstream>
 #include <sstream>
-#include <stdexcept>
 #include <algorithm>
 #include <cctype>
 
@@ -62,7 +62,7 @@ std::vector<PlaceInfo> CsvIO::loadPlaces(const std::string& filename) {
     std::vector<PlaceInfo> places;
     std::ifstream file(filename);
     if (!file.is_open()) {
-        throw std::runtime_error("无法打开文件: " + filename);
+        throw GraphException("Cannot open file: " + filename);
     }
 
     std::string line;
@@ -104,7 +104,7 @@ std::vector<RoadInfo> CsvIO::loadRoads(const std::string& filename) {
     std::vector<RoadInfo> roads;
     std::ifstream file(filename);
     if (!file.is_open()) {
-        throw std::runtime_error("无法打开文件: " + filename);
+        throw GraphException("Cannot open file: " + filename);
     }
 
     std::string line;
@@ -144,7 +144,7 @@ void CsvIO::savePlaces(const std::string& filename,
                        const std::vector<PlaceInfo>& places) {
     std::ofstream file(filename);
     if (!file.is_open()) {
-        throw std::runtime_error("无法写入文件: " + filename);
+        throw GraphException("Cannot write file: " + filename);
     }
 
     // 写出表头
@@ -164,11 +164,11 @@ void CsvIO::saveRoads(const std::string& filename,
                       const std::vector<RoadInfo>& roads) {
     std::ofstream file(filename);
     if (!file.is_open()) {
-        throw std::runtime_error("无法写入文件: " + filename);
+        throw GraphException("Cannot write file: " + filename);
     }
 
     // 写出表头
-    file << "from_id,to_id,distancce,walk_time,status\n";
+    file << "from_id,to_id,distance,walk_time,status\n";
 
     for (const auto& r : roads) {
         file << r.from_id << ","

@@ -1,1 +1,14 @@
-// main.cpp - 主程序入口，处理 CLI 批处理模式的输入输出
+// main.cpp - Program entry point
+// Reads CLI commands from stdin in batch mode, outputs results to stdout.
+// Usage: ./CampusNavigation < command.txt > answer.txt
+
+#include "CommandProcessor.h"
+#include "LGraph.h"
+#include <iostream>
+
+int main() {
+    LGraph graph;
+    CommandProcessor processor(graph);
+    processor.run();
+    return 0;
+}
