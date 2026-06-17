@@ -1,16 +1,5 @@
 // CsvIO.h - CSV 文件读写模块接口声明，用于加载/保存 places.csv 和 roads.csv
-// places.csv文件格式
-/*
-place_id,display_name,category,stay_time,open_time,close_time
-P0001,Library,Teaching,30,08:00,22:00
-P0002,Canteen,Dining,40,06:30,20:30
-*/
-// roads.csv文件格式
-/*
-from_id,to_id,distance,walk_time,status
-P0001,P0002,180,3,open
-P0001,P0003,240,4,closed
-*/
+
 #ifndef CSVIO_H
 #define CSVIO_H
 

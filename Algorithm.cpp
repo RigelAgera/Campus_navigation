@@ -300,6 +300,115 @@ pair<int, vector<string>> Algorithm::waypointPath(
     return {total_cost, full_path};
 }
 
+// ==================== X1. Layered-Graph Shortest Path (K coupons) ====================
+
+KPathResult Algorithm::shortestPathWithKCoupons(
+    const LGraph& graph,
+    const string& start_id,
+    const string& end_id,
+    int K)
+{
+    if (!graph.hasPlace(start_id) || !graph.hasPlace(end_id)) {
+        return {-1, 0, {}, {}, false};
+    }
+
+    // dist[layer][place_id] = shortest time to reach this state
+    // We use vector<unordered_map<string, int>> indexed by layer [0..K]
+    auto all_places = graph.getAllPlaces();
+    vector<unordered_map<string, int>> dist(K + 1);
+    const int INF = numeric_limits<int>::max();
+    for (int k = 0; k <= K; ++k) {
+        for (const auto& p : all_places) {
+            dist[k][p.place_id] = INF;
+        }
+    }
+
+    // Previous-state for path reconstruction
+    // prev[layer][place_id] = {previous_layer, previous_place_id, coupon_used_on_this_edge}
+    struct PrevState {
+        int prev_layer;
+        string prev_place;
+        bool coupon_used;   // true if this step used a coupon
+    };
+    vector<unordered_map<string, PrevState>> prev(K + 1);
+
+    // Min-heap: (distance, layer, place_id)
+    using State = tuple<int, int, string>;  // dist, layer, place_id
+    priority_queue<State, vector<State>, greater<State>> pq;
+
+    dist[0][start_id] = 0;
+    pq.push({0, 0, start_id});
+
+    while (!pq.empty()) {
+        auto [cur_dist, cur_layer, cur_id] = pq.top(); pq.pop();
+
+        // Lazy deletion
+        if (cur_dist != dist[cur_layer][cur_id]) continue;
+
+        // Early exit: once we pop any layer of end_id, we have the optimal answer
+        // because Dijkstra guarantees first pop of any end state is optimal
+        if (cur_id == end_id) {
+            // Reconstruct path and fast edges
+            KPathResult result;
+            result.total_time = cur_dist;
+            result.k_used = cur_layer;
+            result.reachable = true;
+
+            // Backtrack from (cur_layer, end_id) to (0, start_id)
+            int layer = cur_layer;
+            string node = end_id;
+            while (!(layer == 0 && node == start_id)) {
+                result.path.push_back(node);
+                const auto& ps = prev[layer][node];
+                if (ps.coupon_used) {
+                    string u = min(ps.prev_place, node);
+                    string v = max(ps.prev_place, node);
+                    result.fast_edges.emplace_back(u, v);
+                }
+                layer = ps.prev_layer;
+                node = ps.prev_place;
+            }
+            result.path.push_back(start_id);
+            reverse(result.path.begin(), result.path.end());
+
+            // Sort fast_edges by (min(u,v), max(u,v)) lexicographically
+            sort(result.fast_edges.begin(), result.fast_edges.end(),
+                 [](const pair<string, string>& a, const pair<string, string>& b) {
+                     if (a.first != b.first) return a.first < b.first;
+                     return a.second < b.second;
+                 });
+            return result;
+        }
+
+        auto neighbors = graph.getOpenNeighbors(cur_id, false);  // false → walk_time
+        for (const auto& [neighbor_id, walk_time] : neighbors) {
+            // Option A: don't use a coupon — stay in same layer
+            {
+                int new_dist = cur_dist + walk_time;
+                if (new_dist < dist[cur_layer][neighbor_id]) {
+                    dist[cur_layer][neighbor_id] = new_dist;
+                    prev[cur_layer][neighbor_id] = {cur_layer, cur_id, false};
+                    pq.push({new_dist, cur_layer, neighbor_id});
+                }
+            }
+
+            // Option B: use a coupon — move to layer+1
+            if (cur_layer < K) {
+                int fast_time = (walk_time + 2) / 3;  // ceil(walk_time / 3)
+                int new_dist = cur_dist + fast_time;
+                if (new_dist < dist[cur_layer + 1][neighbor_id]) {
+                    dist[cur_layer + 1][neighbor_id] = new_dist;
+                    prev[cur_layer + 1][neighbor_id] = {cur_layer, cur_id, true};
+                    pq.push({new_dist, cur_layer + 1, neighbor_id});
+                }
+            }
+        }
+    }
+
+    // No path found — check all layers of end_id
+    return {-1, 0, {}, {}, false};
+}
+
 // ==================== D. Minimum Spanning Tree (Kruskal) ====================
 
 pair<int, vector<RoadInfo>> Algorithm::mst(const LGraph& graph)

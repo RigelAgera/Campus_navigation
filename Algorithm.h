@@ -8,6 +8,15 @@
 #include "LGraph.h"
 #include "LocationInfo.h"
 
+// Return type for layered-graph shortest path with K coupons
+struct KPathResult {
+    int total_time;                                          // total walk_time on the path
+    int k_used;                                              // actual coupons used
+    std::vector<std::string> path;                           // place_id sequence
+    std::vector<std::pair<std::string, std::string>> fast_edges; // edges where coupons were applied
+    bool reachable;                                          // false if no path exists
+};
+
 class Algorithm {
 public:
     // ==================== A. Connected Components ====================
@@ -49,6 +58,16 @@ public:
         const std::vector<std::string>& waypoints,   // may be empty
         const std::string& end_id,
         bool useDistance
+    );
+
+    // ==================== X1. Layered-Graph Shortest Path (K coupons) ====================
+    // At most K edges can be "accelerated": walk_time → ceil(walk_time / 3).
+    // Only considers status == "open" edges. Weight used is always walk_time.
+    static KPathResult shortestPathWithKCoupons(
+        const LGraph& graph,
+        const std::string& start_id,
+        const std::string& end_id,
+        int K
     );
 
     // ==================== D. Minimum Spanning Tree (Kruskal) ====================

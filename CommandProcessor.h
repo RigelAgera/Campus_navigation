@@ -22,6 +22,9 @@ private:
     // -------- Tokenisation --------
     // Split a line into whitespace-separated tokens.
     static std::vector<std::string> tokenize(const std::string& line);
+    static void printMenu();
+    static bool isNumberSelection(const std::string& line);
+    static std::string buildCommandFromSelection(const std::string& line);
 
     // -------- Command handlers (one per command) --------
     void handleLoad(const std::vector<std::string>& tokens);
@@ -43,6 +46,7 @@ private:
     void handleMustPass(const std::vector<std::string>& tokens);
     void handleMst(const std::vector<std::string>& tokens);
     void handleCritical(const std::vector<std::string>& tokens);
+    void handleShortestK(const std::vector<std::string>& tokens);
 };
 
 #endif

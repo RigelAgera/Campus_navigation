@@ -6,7 +6,17 @@
 #include "LGraph.h"
 #include <iostream>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 int main() {
+#ifdef _WIN32
+    // Ensure UTF-8 output/input in Windows console so Chinese text is displayed correctly.
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
+
     LGraph graph;
     CommandProcessor processor(graph);
     processor.run();

@@ -42,18 +42,26 @@ static std::vector<std::string> splitCsvLine(const std::string& line) {
     return fields;
 }
 
+// Check if a trimmed line is a comment (starts with '#')
+static bool isCommentLine(const std::string& line) {
+    std::string trimmed = trim(line);
+    return !trimmed.empty() && trimmed[0] == '#';
+}
+
 // 判断一行是否为 places.csv 的表头
 static bool isPlaceHeader(const std::string& line) {
     std::string lower = line;
     std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-    return lower.find("place_id") != std::string::npos;
+    // A comment line is never a header
+    return !isCommentLine(lower) && lower.find("place_id") != std::string::npos;
 }
 
 // 判断一行是否为 roads.csv 的表头
 static bool isRoadHeader(const std::string& line) {
     std::string lower = line;
     std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-    return lower.find("from_id") != std::string::npos;
+    // A comment line is never a header
+    return !isCommentLine(lower) && lower.find("from_id") != std::string::npos;
 }
 
 // ---------- 公开接口 ----------
@@ -69,8 +77,10 @@ std::vector<PlaceInfo> CsvIO::loadPlaces(const std::string& filename) {
     bool firstLine = true;
 
     while (std::getline(file, line)) {
-        // 跳过空行
+        // 跳过空行和注释行
         if (line.empty() || line.find_first_not_of(" \t\r") == std::string::npos)
+            continue;
+        if (isCommentLine(line))
             continue;
 
         // 如果是第一行，检查是否为表头
@@ -111,8 +121,10 @@ std::vector<RoadInfo> CsvIO::loadRoads(const std::string& filename) {
     bool firstLine = true;
 
     while (std::getline(file, line)) {
-        // 跳过空行
+        // 跳过空行和注释行
         if (line.empty() || line.find_first_not_of(" \t\r") == std::string::npos)
+            continue;
+        if (isCommentLine(line))
             continue;
 
         // 如果是第一行，检查是否为表头

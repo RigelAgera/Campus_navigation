@@ -6,13 +6,44 @@
 #include "CsvIO.h"
 #include "GraphException.h"
 #include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <sstream>
 
 namespace {
+struct MenuCommand {
+    int number;
+    const char* name;
+    const char* usage;
+};
+
 bool isValidMode(const std::string& mode) {
     return mode == "DIST" || mode == "TIME";
 }
+
+const MenuCommand kMenuCommands[] = {
+    {1,  "LOAD",           "LOAD <places_file> <roads_file>"},
+    {2,  "SAVE",           "SAVE <places_out_file> <roads_out_file>"},
+    {3,  "QUERY_PLACE",    "QUERY_PLACE <place_id>"},
+    {4,  "QUERY_CATEGORY", "QUERY_CATEGORY <category>"},
+    {5,  "ADJ",            "ADJ <place_id>"},
+    {6,  "ADD_PLACE",      "ADD_PLACE <place_id> <display_name> <category> <stay_time> <open_time> <close_time>"},
+    {7,  "DELETE_PLACE",   "DELETE_PLACE <place_id>"},
+    {8,  "UPDATE_PLACE",   "UPDATE_PLACE <place_id> <field> <value>"},
+    {9,  "ADD_ROAD",       "ADD_ROAD <from_id> <to_id> <distance> <walk_time> <status>"},
+    {10, "DELETE_ROAD",    "DELETE_ROAD <from_id> <to_id>"},
+    {11, "UPDATE_ROAD",    "UPDATE_ROAD <from_id> <to_id> <field> <value>"},
+    {12, "CLOSE_ROAD",     "CLOSE_ROAD <from_id> <to_id>"},
+    {13, "OPEN_ROAD",      "OPEN_ROAD <from_id> <to_id>"},
+    {14, "COMPONENTS",     "COMPONENTS"},
+    {15, "SHORTEST",       "SHORTEST <from_id> <to_id> <DIST|TIME>"},
+    {16, "TIMED_SHORTEST", "TIMED_SHORTEST <start_time> <from_id> <to_id>"},
+    {17, "MUST_PASS",      "MUST_PASS <from_id> <to_id> <pass_id> <DIST|TIME>"},
+    {18, "MST",            "MST"},
+    {19, "CRITICAL",       "CRITICAL"},
+    {20, "SHORTEST_K",     "SHORTEST_K <from_id> <to_id> <k>"},
+    {21, "QUIT",           "QUIT"}
+};
 }
 
 // ==================== Tokenisation ====================
@@ -27,18 +58,84 @@ std::vector<std::string> CommandProcessor::tokenize(const std::string& line) {
     return tokens;
 }
 
+void CommandProcessor::printMenu() {
+    std::cout << "================ Campus Navigation Command Menu ================\n";
+    for (const auto& command : kMenuCommands) {
+        std::cout << command.number << ". " << command.usage << '\n';
+    }
+    std::cout << "---------------------------------------------------------------\n";
+    std::cout << "Type a full command, or enter: number + arguments\n";
+    std::cout << "Example: 1 saved_places.csv saved_roads.csv\n";
+    std::cout << "cmd> ";
+}
+
+bool CommandProcessor::isNumberSelection(const std::string& line) {
+    std::istringstream iss(line);
+    std::string firstToken;
+    if (!(iss >> firstToken)) {
+        return false;
+    }
+
+    return std::all_of(firstToken.begin(), firstToken.end(),
+                       [](unsigned char ch) { return std::isdigit(ch) != 0; });
+}
+
+std::string CommandProcessor::buildCommandFromSelection(const std::string& line) {
+    std::istringstream iss(line);
+    int selection = 0;
+    iss >> selection;
+
+    const MenuCommand* selectedCommand = nullptr;
+    for (const auto& command : kMenuCommands) {
+        if (command.number == selection) {
+            selectedCommand = &command;
+            break;
+        }
+    }
+
+    if (selectedCommand == nullptr) {
+        return std::string();
+    }
+
+    std::string remainingArgs;
+    std::getline(iss, remainingArgs);
+    if (!remainingArgs.empty() && remainingArgs.front() == ' ') {
+        remainingArgs.erase(0, 1);
+    }
+
+    if (remainingArgs.empty()) {
+        return selectedCommand->name;
+    }
+    return std::string(selectedCommand->name) + " " + remainingArgs;
+}
+
 // ==================== Main loop ====================
 
 void CommandProcessor::run() {
     std::string line;
+    printMenu();
     while (std::getline(std::cin, line)) {
         // Skip empty lines and lines containing only whitespace
         if (line.find_first_not_of(" \t\r") == std::string::npos) {
+            std::cout << "cmd> ";
             continue;
         }
 
+        if (isNumberSelection(line)) {
+            std::string convertedCommand = buildCommandFromSelection(line);
+            if (convertedCommand.empty()) {
+                std::cout << "ERROR unknown_command" << std::endl;
+                std::cout << "cmd> ";
+                continue;
+            }
+            line = convertedCommand;
+        }
+
         auto tokens = tokenize(line);
-        if (tokens.empty()) continue;
+        if (tokens.empty()) {
+            std::cout << "cmd> ";
+            continue;
+        }
 
         const std::string& cmd = tokens[0];
 
@@ -62,6 +159,7 @@ void CommandProcessor::run() {
             else if (cmd == "MUST_PASS")          handleMustPass(tokens);
             else if (cmd == "MST")                handleMst(tokens);
             else if (cmd == "CRITICAL")           handleCritical(tokens);
+            else if (cmd == "SHORTEST_K")         handleShortestK(tokens);
             else if (cmd == "QUIT")               return;   // no output, exit
             else {
                 std::cout << "ERROR unknown_command" << std::endl;
@@ -79,6 +177,8 @@ void CommandProcessor::run() {
             // In production, we might want to map more specifically.
             std::cout << "ERROR " << e.what() << std::endl;
         }
+
+        std::cout << "cmd> ";
     }
 }
 
@@ -616,6 +716,44 @@ void CommandProcessor::handleCritical(const std::vector<std::string>& tokens) {
     }
     std::cout << " EDGES " << edges.size();
     for (const auto& e : edges) {
+        std::cout << " " << e.first << "-" << e.second;
+    }
+    std::cout << std::endl;
+}
+
+// ==================== X1. SHORTEST_K ====================
+
+void CommandProcessor::handleShortestK(const std::vector<std::string>& tokens) {
+    // SHORTEST_K <from_id> <to_id> <K>
+    if (tokens.size() < 4) {
+        std::cout << "ERROR unknown_command" << std::endl;
+        return;
+    }
+    const std::string& from_id = tokens[1];
+    const std::string& to_id   = tokens[2];
+    int K = std::stoi(tokens[3]);
+
+    // Check place existence
+    if (!graph_.hasPlace(from_id) || !graph_.hasPlace(to_id)) {
+        std::cout << "ERROR place_not_found" << std::endl;
+        return;
+    }
+
+    auto result = Algorithm::shortestPathWithKCoupons(graph_, from_id, to_id, K);
+
+    if (!result.reachable) {
+        std::cout << "NO_PATH" << std::endl;
+        return;
+    }
+
+    std::cout << "PATH " << result.total_time
+              << " K_USED " << result.k_used
+              << " NODES";
+    for (const auto& id : result.path) {
+        std::cout << " " << id;
+    }
+    std::cout << " FAST " << result.fast_edges.size();
+    for (const auto& e : result.fast_edges) {
         std::cout << " " << e.first << "-" << e.second;
     }
     std::cout << std::endl;
